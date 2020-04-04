@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
@@ -6,6 +6,7 @@ import { Button, List, TextField } from '@material-ui/core';
 import IconButton from '@material-ui/core/IconButton';
 import MenuIcon from '@material-ui/icons/Menu';
 import Task from './Task';
+import { database } from './Firebase';
 
 
 function Todo() {
@@ -15,16 +16,36 @@ function Todo() {
         event.preventDefault()
         const value = event.target.content.value
         if ( value !== '' ) {
-            setTask([...tasks, { content: value }])
+            const obj = { content: value, done: false }
+            addTask(obj)
             event.target.content.value = '';
         }
     }
 
-    const deleteTask = (index) => {
-        const items = tasks.filter((task, i) => {
-            return index !== i
+    useEffect(() => {
+        const unsubscribe = database.collection('tasks')
+        .onSnapshot((query) => {
+            let docs = [];
+            query.forEach((doc) => {
+                const { content, done } = doc.data();
+                docs.push({
+                    id: doc.id,
+                    content: content, 
+                    done: done
+                })
+            })
+            setTask(docs)
         })
-        setTask(items)
+        return unsubscribe;
+    },[])
+
+    const addTask = (obj) => {
+        database.collection('tasks')
+        .add(obj)
+        .then((doc) => {})
+        .catch((err) => {
+            console.log(err)
+        })
     }
 
     return(
@@ -43,7 +64,7 @@ function Todo() {
                 <List dense>
                     {   
                         tasks.map((task, index) =>
-                        <Task key={index} task={task} deleteTask={deleteTask} index={index} />
+                        <Task key={index} task={task} index={index} />
                     )}
                 </List>
                 <hr />
